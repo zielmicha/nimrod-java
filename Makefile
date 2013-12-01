@@ -1,11 +1,14 @@
 FLAGS='--cincludes:/usr/lib/jvm/java-6-openjdk-amd64/include/' '--verbosity:0' '--parallelBuild:1' '--warning[SmallLshouldNotBeUsed]=off' '--threads:on'
 
+hltest:
+	nimrod c $(FLAGS) java.nim
+	./java
 
 lowleveltest:
 	nimrod c $(FLAGS) lowleveltest.nim
 	./lowleveltest
 
-.PHONY: lowleveltest
+.PHONY: lowleveltest hltest
 
 jni.nim: jni_modified.h
 	c2nim jni_modified.h '--out:jni.nim'
