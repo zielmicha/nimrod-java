@@ -35,7 +35,6 @@ proc stripFirstWord(a: var string): bool =
     return true
 
 proc rawJavap(name: string): auto =
-  echo "Running javap"
   let p = osproc.startProcess("/usr/bin/javap", ".", ["-s", name])
   return p.outputStream
 
@@ -50,7 +49,7 @@ proc parseJavaDecl(line: string): TThingInfo =
   let isPublic = rest.maybeStripStart("public ")
   let isProtected = rest.maybeStripStart("protected ")
   let isStatic = rest.maybeStripStart("static ")
-  let isFinal = rest.maybeStripStart("final ")
+  discard rest.maybeStripStart("final ")
 
   var kind = javaMethod
   var name: string
@@ -74,8 +73,7 @@ proc parseJavaDecl(line: string): TThingInfo =
 proc parseSig(line): string =
   string(line).split(':')[1].strip
 
-proc javap(name: string) =
-  echo "javap main"
+iterator javap*(name: string): Tuple[decl: TThingInfo, sig: string] =
   let input = rawJavap(name)
   var line: TaintedString = ""
   # discard 'Compiled from "Foobar.java"'
@@ -91,7 +89,8 @@ proc javap(name: string) =
     discard input.readLine(line)
     # "  Signature: jnisig"
     let sig = parseSig(line)
-    echo javaDecl, " ", sig
+    yield (javaDecl, sig)
 
 when isMainModule:
-  javap "java.lang.String"
+  for decl, sig in javap("java.lang.String"):
+    echo decl, " ", sig

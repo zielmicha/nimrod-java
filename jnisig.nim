@@ -2,16 +2,16 @@
 import strutils
 import tables
 
-type TJNITypeKind = enum
+type TJNITypeKind* = enum
   jniprimitive, jniarray, jniobject
 
 type
-  PJNIType = ref TJNIType
+  PJNIType* = ref TJNIType
   TJNIType = object
-    case kind: TJNITypeKind
-    of jniprimitive: typeName: string
-    of jniarray: elementType: PJNIType
-    of jniobject: className: string
+    case kind*: TJNITypeKind
+    of jniprimitive: typeName*: string
+    of jniarray: elementType*: PJNIType
+    of jniobject: className*: string
 
 let jniPrimitives = {
   'Z': "boolean",
@@ -63,7 +63,7 @@ proc parseMany(sig: string): seq[PJNIType] =
   while sigMut.len != 0:
     result.add(parsePart(sigMut))
 
-proc parseCall(sig: string): tuple[args: seq[PJNIType], ret: PJNIType] =
+proc parseCall*(sig: string): tuple[args: seq[PJNIType], ret: PJNIType] =
   let raw = splitCall(sig)
   result.args = parseMany(raw.args)
   result.ret = parseOne(raw.ret)
