@@ -103,7 +103,7 @@ proc cachedRawJavap(name: string): TFile =
     inFile = open(path)
   return inFile
 
-proc invokeJavap(name: string): TClassInfo =
+proc invokeJavap*(name: string): TClassInfo =
   var input = cachedRawJavap(name)
   finally: input.close
   var line: TaintedString = ""
@@ -114,6 +114,7 @@ proc invokeJavap(name: string): TClassInfo =
     discard input.readLine(line)
   result = parseClassInfo(line)
   result.things = @[]
+  result.name = name
   while input.readLine(line):
     if line == "}":
       break
@@ -125,15 +126,13 @@ proc invokeJavap(name: string): TClassInfo =
     javaDecl.sig = sig
     result.things.add(javaDecl)
 
-iterator listJAR(path: string, prefixes: openarray[string]): string {.inline.} =
+iterator listJAR*(path: string, prefixes: openarray[string]): string {.inline.} =
   var archive: TZipArchive
   assert archive.open(path)
   finally: archive.close()
   for name in archive.walkFiles():
     if name.endsWith(".class") and name.startsWith(prefixes):
       yield name[0..name.len-7]
-
-#processJAR(path: string)
 
 when isMainModule:
   var s: seq[string] = @[]

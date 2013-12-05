@@ -3,7 +3,7 @@ import sequtils
 import javap
 import jnisig
 
-proc classnameToId(name: string): string
+proc classnameToId*(name: string): string
 
 proc javaReturnMethod(t: PJNIType): string
 proc javaCastArgs(t: seq[PJNIType]): string
@@ -11,20 +11,24 @@ proc javaCastResult(def: PJNIType, name: string): string
 proc javaToNimArgs(t: seq[PJNIType]): string
 proc javaToNimType(t: PJNIType): string
 
-proc generateJavaClass(target: string): string =
+template addln(data: string): stmt =
+  result.add(data)
+  result.add("\n")
+
+proc generateJavaClass*(target: string): string =
   result = ""
   let mangled = target.classnameToId
-  add result, "type $1* = distinct JInstance" % [mangled]
+  addln "type $1* = distinct JInstance" % [mangled]
   # This needs to be thread-local var, as JNI env is single threaded.
   # However, this means that threads may leak memory.
-  add result, "var cls_$1 {.threadvar.}" % [mangled, target]
-  add result, "proc GetJClass*(TypeDesc[$1]): TJClass =" % [mangled]
-  add result,  "  if cls_$1 == nil:" % [mangled]
-  add result, "    cls_$1 = defaultJVM.FindClass(\"$2\")" % [mangled, target]
-  add result, "  return cls_$1" % [mangled]
+  addln "var cls_$1 {.threadvar.}: TJClass" % [mangled, target]
+  addln "proc GetJClass*(t: TypeDesc[$1]): TJClass =" % [mangled]
+  addln  "  if cls_$1 == nil:" % [mangled]
+  addln "    cls_$1 = defaultJVM.FindClass(\"$2\")" % [mangled, target]
+  addln "  return cls_$1" % [mangled]
 
-proc generateJavaMethod(target: string,
-                        decl: TThingInfo, sig: string): string =
+proc generateJavaMethod*(target: string,
+                         decl: TThingInfo, sig: string): string =
   result = ""
   let mangled = target.classnameToId
   let (argSig, retSig) = parseCall(sig)
@@ -34,23 +38,23 @@ proc generateJavaMethod(target: string,
   let returnMethod = javaReturnMethod(retSig)
   let returnsVoid = returnMethod == "void"
   if decl.isStatic:
-    add result, "proc $1*(jself: TypeDesc[$2], $3): $4 =" % [
+    addln "proc $1*(jself: TypeDesc[$2], $3): $4 =" % [
       decl.name, mangled, argDef, retDef]
-    add result, "  let class = GetJClass($1)" % [mangled]
-    add result, "  let env = class.env"
-    add result, "  env.PushLocalFrame(env, 16)"
+    addln "  let class = GetJClass($1)" % [mangled]
+    addln "  let env = class.env"
+    addln "  env.PushLocalFrame(env, 16)"
     # TODO: call GetMethodID only once for each method
-    add result, "  let method = env.GetStaticMethodID(env, System, \"$1\", \"$2\")" % [
+    addln "  let method = env.GetStaticMethodID(env, System, \"$1\", \"$2\")" % [
       decl.name, sig]
-    add result, "  $1env.CallStatic$2Method(env, class, method, $3)" % [
+    addln "  $1env.CallStatic$2Method(env, class, method, $3)" % [
       if returnsVoid: "" else: "let ret = ",
       returnMethod, javaCastArgs]
     if not returnsVoid:
-      add result, "  result = $2($1)" % [javaCastResult(retSig, "ret"), mangled]
-    add result, "  env.PopLocalFrame(env)"
+      addln "  result = $2($1)" % [javaCastResult(retSig, "ret"), mangled]
+    addln "  env.PopLocalFrame(env)"
 
 proc classnameToId(name: string): string =
-  name.replace('/', '_').replace('$', '_')
+  name.replace('/', '_').replace('$', '_').replace("__", "")
 
 proc javaReturnMethod(t: PJNIType): string =
   case t.kind:
