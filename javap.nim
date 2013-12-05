@@ -3,21 +3,26 @@ import streams
 import strutils
 import tables
 import re
+import zipfiles
+import os
+import md5
 
 type
-  TClassInfo* = Tuple[name: string]
   TThingKind* = enum
     javaMethod,
     javaField,
     javaConstructor
     javaSpecial
-  TThingInfo* = Tuple[
-    name: string,
-    kind: TThingKind,
-    isPublic: bool,
-    isProtected: bool,
-    isStatic: bool
-  ]
+  TThingInfo* = object
+    name*: string
+    kind*: TThingKind
+    isPublic*: bool
+    isProtected*: bool
+    isStatic*: bool
+    sig*: string
+  TClassInfo* = object
+    name*: string
+    things*: seq[TThingInfo]
 
 proc maybeStripStart(a: var string, start: string): bool =
   if a.startsWith(start):
@@ -34,10 +39,6 @@ proc stripFirstWord(a: var string): bool =
     a = a[loc+1..a.len-1]
     return true
 
-proc rawJavap(name: string): auto =
-  let p = osproc.startProcess("/usr/bin/javap", ".", ["-s", name])
-  return p.outputStream
-
 proc parseClassInfo(line: string): TClassInfo =
   nil
 
@@ -46,51 +47,102 @@ proc `$`(info: TThingInfo): string =
 
 proc parseJavaDecl(line: string): TThingInfo =
   var rest = line[0..line.len - 2]
-  let isPublic = rest.maybeStripStart("public ")
-  let isProtected = rest.maybeStripStart("protected ")
-  let isStatic = rest.maybeStripStart("static ")
+  let throwsDeclLoc = rest.find("throws ")
+  if throwsDeclLoc != -1:
+    rest = rest[0..throwsDeclLoc-1].strip()
+  result.isPublic = rest.maybeStripStart("public ")
+  result.isProtected = rest.maybeStripStart("protected ")
+  result.isStatic = rest.maybeStripStart("static ")
   discard rest.maybeStripStart("final ")
 
-  var kind = javaMethod
-  var name: string
+  result.kind = javaMethod
   if not rest.stripFirstWord():
     if rest != "{}":
-      kind = javaConstructor
+      result.kind = javaConstructor
     else:
-      kind = javaSpecial
-    name = "<constructor>"
+      result.kind = javaSpecial
+    result.name = "<constructor>"
   else:
-    let nameMatch = rest.matchLen(re"^\w+")
-    assert nameMatch != -1
+    let nameMatch = rest.matchLen(re"^(\w|\$)+")
+    assert nameMatch != -1, "Failed to parse $1, rest: $2" % [line, rest]
 
-    name = rest[0..nameMatch-1]
+    result.name = rest[0..nameMatch-1]
     rest = rest[nameMatch..rest.len-1]
     if rest == "":
-      kind = javaField
-
-  return (name, kind, isPublic, isProtected, isStatic)
+      result.kind = javaField
 
 proc parseSig(line): string =
   string(line).split(':')[1].strip
 
-iterator javap*(name: string): Tuple[decl: TThingInfo, sig: string] =
-  let input = rawJavap(name)
+proc readAll(stream: PStream): string =
+  result = ""
+  const bufsize = 4096
+  while true:
+    var buff = stream.readStr(bufsize)
+    if buff.len == 0:
+      break
+    result.add(buff)
+
+proc startsWith(path: string, prefixes: openarray[string]): bool =
+  for prefix in prefixes:
+    if path.startsWith(prefix):
+      return true
+  return false
+
+proc cachedRawJavap(name: string): TFile =
+  let path = "nimcache" / "javap" / getMD5(name)
+  var inFile: TFile
+  if not inFile.open(path):
+    let process = osproc.startProcess("/usr/bin/javap", ".", ["-s", name])
+    finally: process.close
+    let input = process.outputStream
+    let data = readAll(input)
+    let outFile = open(path, fmWrite)
+    finally: outFile.close
+    outFile.write(data)
+    inFile = open(path)
+  return inFile
+
+proc invokeJavap(name: string): TClassInfo =
+  var input = cachedRawJavap(name)
+  finally: input.close
   var line: TaintedString = ""
   # discard 'Compiled from "Foobar.java"'
   discard input.readLine(line)
-  #
-  discard input.readLine(line)
-  let classInfo = parseClassInfo(line)
+  # but only if file was compiled from source
+  if line.startsWith("Compiled from"):
+    discard input.readLine(line)
+  result = parseClassInfo(line)
+  result.things = @[]
   while input.readLine(line):
     if line == "}":
       break
     # like: public boolean isEmpty();
-    let javaDecl = parseJavaDecl(line)
+    var javaDecl = parseJavaDecl(line)
     discard input.readLine(line)
     # "  Signature: jnisig"
     let sig = parseSig(line)
-    yield (javaDecl, sig)
+    javaDecl.sig = sig
+    result.things.add(javaDecl)
+
+iterator listJAR(path: string, prefixes: openarray[string]): string {.inline.} =
+  var archive: TZipArchive
+  assert archive.open(path)
+  finally: archive.close()
+  for name in archive.walkFiles():
+    if name.endsWith(".class") and name.startsWith(prefixes):
+      yield name[0..name.len-7]
+
+#processJAR(path: string)
 
 when isMainModule:
-  for decl, sig in javap("java.lang.String"):
-    echo decl, " ", sig
+  var s: seq[string] = @[]
+
+  var classN, thingN = 0
+  for classname in listJAR("/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rt.jar",
+                           prefixes=["java/", "javax/"]):
+    echo classname
+    classN += 1
+    let info = invokeJavap(classname)
+    thingN += info.things.len
+  echo "Processed $1 classes, $2 methods" % [$classN, $thingN]
