@@ -22,6 +22,7 @@ type
     sig*: string
   TClassInfo* = object
     name*: string
+    isPublic*: bool
     things*: seq[TThingInfo]
 
 proc maybeStripStart(a: var string, start: string): bool =
@@ -40,7 +41,8 @@ proc stripFirstWord(a: var string): bool =
     return true
 
 proc parseClassInfo(line: string): TClassInfo =
-  nil
+  var rest = line
+  result.isPublic = rest.maybeStripStart("public ")
 
 proc `$`(info: TThingInfo): string =
   "JavaThing[type=$1, name=$2, static=$3]" % [$info.kind, info.name, $info.isStatic]

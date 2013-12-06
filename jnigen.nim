@@ -20,9 +20,12 @@ proc normalizeStyle(s: string): string =
 proc addJAR*(builder: PBuilder, path: string, prefixes: openarray[string]) =
   for classname in listJAR(path, prefixes=prefixes):
     let info = invokeJavap(classname)
-    # we need this check, because in Java libraries exists oddities such as
+    if not info.isPublic:
+      continue
+    # we need this check, because in Java libraries there are oddities such as
     # classes ServiceMode and Service.Mode, which are translated to same ident.
     let mangled = classnameToId(info.name).normalizeStyle
+    # or even worse - hyphens in class names
     if not validIdentifier(mangled): # uh-oh
       continue
     if mangled notin builder.classnames:
@@ -37,5 +40,5 @@ proc genClassDecl(builder: PBuilder): string =
 when isMainModule:
   var builder: PBuilder = makeBuilder()
   builder.addJAR("/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rt.jar",
-    prefixes=["java/", "javax/"])
+    prefixes=["java/lang/"])
   builder.genClassDecl().echo
