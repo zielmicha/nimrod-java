@@ -48,7 +48,7 @@ proc `$`(info: TThingInfo): string =
   "JavaThing[type=$1, name=$2, static=$3]" % [$info.kind, info.name, $info.isStatic]
 
 proc parseJavaDecl(line: string): TThingInfo =
-  var rest = line[0..line.len - 2]
+  var rest = line[0..line.len - 2].strip()
   let throwsDeclLoc = rest.find("throws ")
   if throwsDeclLoc != -1:
     rest = rest[0..throwsDeclLoc-1].strip()
@@ -56,6 +56,9 @@ proc parseJavaDecl(line: string): TThingInfo =
   result.isProtected = rest.maybeStripStart("protected ")
   result.isStatic = rest.maybeStripStart("static ")
   discard rest.maybeStripStart("final ")
+  discard rest.maybeStripStart("synchronized ")
+  discard rest.maybeStripStart("native ")
+  discard rest.maybeStripStart("strictfp ")
 
   result.kind = javaMethod
   if not rest.stripFirstWord():
@@ -91,11 +94,12 @@ proc startsWith(path: string, prefixes: openarray[string]): bool =
       return true
   return false
 
-proc cachedRawJavap(name: string): TFile =
-  let path = "nimcache" / "javap" / getMD5(name)
+proc cachedRawJavap(name: string, jarpath: string, jarmd5: string): TFile =
+  let path = "nimcache" / "javap" / getMD5(jarmd5 / name)
   var inFile: TFile
   if not inFile.open(path):
-    let process = osproc.startProcess("/usr/bin/javap", ".", ["-s", name])
+    let process = osproc.startProcess("/usr/bin/javap", ".",
+      ["-classpath", jarpath, "-s", name])
     finally: process.close
     let input = process.outputStream
     let data = readAll(input)
@@ -105,8 +109,13 @@ proc cachedRawJavap(name: string): TFile =
     inFile = open(path)
   return inFile
 
-proc invokeJavap*(name: string): TClassInfo =
-  var input = cachedRawJavap(name)
+proc getFileMD5*(path: string): string =
+  var f = open(path)
+  finally: f.close()
+  return getMD5(readAll(f))
+
+proc invokeJavap*(name: string, jarpath: string, jarmd5: string): TClassInfo =
+  var input = cachedRawJavap(name, jarpath, jarmd5)
   finally: input.close
   var line: TaintedString = ""
   # discard 'Compiled from "Foobar.java"'

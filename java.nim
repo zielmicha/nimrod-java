@@ -34,7 +34,7 @@ proc newJVM*(classpath: string = ""): TJVM =
 proc destruct(instance: JInstance) {.destructor.} =
   echo "Destroying Java!"
 
-proc findClass(jvm: TJVM, name: string): TJClass =
+proc findClass*(jvm: TJVM, name: string): TJClass =
   let class = jvm.env.FindClass(jvm.env, name)
   assert class != nil
   return (jvm.env, class, name)
@@ -51,6 +51,12 @@ proc packJObject*(jvm: TJVM, obj: jobject): JInstance =
   result = newInstanceRaw()
   result.obj = globalRef
   result.jvm = jvm
+
+proc seqToJArray*[T](jvm: TJVM, s: seq[T]): jobject =
+  assert False
+
+proc jarrayToSeq*(jvm: TJVM, s: jobject): auto =
+  assert False
 
 proc `$`(class: TJClass): string =
   "JavaClass " & class.name

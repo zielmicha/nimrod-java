@@ -52,7 +52,7 @@ proc parsePart(sig: var string): PJNIType =
   else:
     assert False
 
-proc parseOne(sig: string): PJNIType =
+proc parseOne*(sig: string): PJNIType =
   var sigMut = sig
   result = parsePart(sigMut)
   assert sigMut.len == 0
