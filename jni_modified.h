@@ -39,7 +39,6 @@
 #def JNIEXPORT
 #cdecl
 #include "jnifindjava.h"
-#define libjava find_java()
 #dynlib libjava
 #endif
 

@@ -31,10 +31,8 @@
 #  Copyright (c) 1996 Netscape Communications Corporation. All rights reserved.
 # ***************************************************************************
 
-import jnifindjava
-
-let
-  libjava* = findJava()
+import 
+  "jnifindjava"
 
 import 
   "jni_md"
