@@ -6,8 +6,8 @@ type
   TJVM* = Tuple[jvm: ptr JavaVM, env: ptr JNIEnv]
   TJClass* = Tuple[env: ptr JNIEnv, class: jclass, name: string]
   TJInstance = object
-    obj: jobject
-    jvm: TJVM
+    obj*: jobject
+    jvm*: TJVM
   JInstance* = ref TJInstance
 
 var defaultJVM* {.threadvar.}: TJVM
@@ -31,7 +31,7 @@ proc newJVM*(classpath: string = ""): TJVM =
   discardzero JNI_CreateJavaVM(addr(jvm), cast[ptr pointer](addr(env)), addr(vmArgs))
   return (jvm, env)
 
-proc destruct(instance: JInstance) {.destructor.} =
+proc destruct(instance: JInstance) =
   echo "Destroying Java!"
 
 proc findClass*(jvm: TJVM, name: string): TJClass =

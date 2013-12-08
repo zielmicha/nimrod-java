@@ -31,8 +31,10 @@
 #  Copyright (c) 1996 Netscape Communications Corporation. All rights reserved.
 # ***************************************************************************
 
-const 
-  libjava* = "/usr/lib/jvm/java-6-openjdk-amd64/jre/lib/amd64/jamvm/libjvm.so"
+import jnifindjava
+
+let
+  libjava* = findJava()
 
 import 
   "jni_md"

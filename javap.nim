@@ -98,8 +98,9 @@ proc cachedRawJavap(name: string, jarpath: string, jarmd5: string): TFile =
   let path = "nimcache" / "javap" / getMD5(jarmd5 / name)
   var inFile: TFile
   if not inFile.open(path):
-    let process = osproc.startProcess("/usr/bin/javap", ".",
-      ["-classpath", jarpath, "-s", name])
+    echo "javap $1" % name
+    let process = osproc.startProcess("javap", ".",
+      ["-classpath", jarpath, "-s", name], options={poUseShell})
     finally: process.close
     let input = process.outputStream
     let data = readAll(input)

@@ -1,6 +1,7 @@
 import javap
 import jnigencode
 import jnisig
+import jnifindjava
 import sets
 import strutils
 import tables
@@ -41,8 +42,9 @@ proc addJAR*(builder: PBuilder, path: string, prefixes: openarray[string]) =
       builder.fullClasses.incl(mangled)
       builder.classes.add(info)
       usedTypes.add(jnisig.parseOne("L$1;" % classname))
-      let code = generateClassThings(info, usedTypes)
-      builder.classGeneratedCode[classname] = code
+      if info.isPublic:
+        let code = generateClassThings(info, usedTypes)
+        builder.classGeneratedCode[classname] = code
 
   # also add missing types
   for t in usedTypes:
@@ -58,10 +60,13 @@ const
   typedefs_header = "import jni_md, jni, java\n"
   class_header = "import jni_md, jni, java, jtypedefs\n"
 
-proc generate(builder: PBuilder, target: string) =
+proc generate*(builder: PBuilder, target: string) =
   writeFile(target / "jtypedefs.nim", typedefs_header & builder.genClassDecl())
   for classname, data in builder.classGeneratedCode.pairs():
-    writeFile(target / classnameToId(classname) & ".nim", class_header & data)
+    writeFile(target / ("wrapper_" & classnameToId(classname) & ".nim"), class_header & data)
+
+proc compileFlags*(): string =
+  return "--cincludes:$1 --verbosity:0 --parallelBuild:1 --warning[SmallLshouldNotBeUsed]=off --threads:on" % [findJavaInclude()]
 
 when isMainModule:
   var builder: PBuilder = makeBuilder()

@@ -38,7 +38,8 @@
 #def JNICALL
 #def JNIEXPORT
 #cdecl
-#define libjava "/usr/lib/jvm/java-6-openjdk-amd64/jre/lib/amd64/jamvm/libjvm.so"
+#include "jnifindjava.h"
+#define libjava find_java()
 #dynlib libjava
 #endif
 

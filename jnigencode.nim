@@ -22,11 +22,8 @@ proc generateJavaClass*(target: string): string =
   addln "type $1* = distinct JInstance" % [mangled]
   # This needs to be thread-local var, as JNI env is single threaded.
   # However, this means that threads may leak memory.
-  addln "var cls_$1 {.threadvar.}: TJClass" % [mangled, target]
-  addln "proc GetJClass*(t: TypeDesc[$1]): TJClass =" % [mangled]
-  addln  "  if cls_$1 == nil:" % [mangled]
-  addln "    cls_$1 = defaultJVM.FindClass(\"$2\")" % [mangled, target]
-  addln "  return cls_$1" % [mangled]
+  addln "var cls_$1* {.threadvar.}: TJClass" % [mangled, target]
+  addln "var $1_static*: $1" % [mangled]
 
 proc generateJavaMethod*(target: string,
                          decl: TThingInfo,
@@ -44,20 +41,22 @@ proc generateJavaMethod*(target: string,
   let returnMethod = javaReturnMethod(retSig)
   let returnsVoid = returnMethod == "Void"
   if decl.isStatic:
-    addln "proc $1*(jself: TypeDesc[$2], $3): $4 =" % [
+    addln "proc $1*(jself: $2, $3): $4 =" % [
       mangleProcName(decl.name), mangled, argDef, retDef]
-    addln "  let class = GetJClass($1)" % [mangled]
+    addln "  if cls_$1.class == nil:" % [mangled]
+    addln "    cls_$1 = FindClass(defaultJVM, \"$2\")" % [mangled, target]
+    addln "  let class = cls_$1" % [mangled]
     addln "  let env = class.env"
-    addln "  env.PushLocalFrame(env, 16)"
+    addln "  discard env.PushLocalFrame(env, 16)"
     # TODO: call GetMethodID only once for each method
-    addln "  let methodid = env.GetStaticMethodID(env, System, \"$1\", \"$2\")" % [
+    addln "  let methodid = env.GetStaticMethodID(env, class.class, \"$1\", \"$2\")" % [
       decl.name, sig]
-    addln "  $1env.CallStatic$2Method(env, class, methodid, $3)" % [
+    addln "  $1env.CallStatic$2Method(env, class.class, methodid, $3)" % [
       if returnsVoid: "" else: "let ret = ",
       returnMethod, javaCastArgs]
     if not returnsVoid:
-      addln "  result = $2($1)" % [javaCastResult(retSig, "ret"), mangled]
-    addln "  env.PopLocalFrame(env)"
+      addln "  result = $1" % [javaCastResult(retSig, "ret")]
+    addln "  discard env.PopLocalFrame(env, nil)"
 
 proc generateClassThings*(info: TClassInfo,
                           usedTypes: var seq[PJNIType]): string =
@@ -104,7 +103,7 @@ proc javaCastResult(def: PJNIType, name: string): string =
     of jniprimitive:
       result = name
     of jniobject:
-      result = "packJObject(defaultJVM, $1)" % [name]
+      result = "$2(packJObject(defaultJVM, $1))" % [name, def.className.classnameToId]
     of jniarray:
       result = "jarrayToSeq(defaultJVM, $1)" % [name]
 
