@@ -23,7 +23,9 @@ proc generateJavaClass*(target: string): string =
   # This needs to be thread-local var, as JNI env is single threaded.
   # However, this means that threads may leak memory.
   addln "var cls_$1* {.threadvar.}: TJClass" % [mangled, target]
-  addln "var $1_static*: $1" % [mangled]
+  # just a marker for compile-time dispatch
+  addln "type $1_statictype* = distinct int" % [mangled]
+  addln "var $1_static*: $1_statictype" % [mangled]
 
 proc generateJavaMethod*(target: string,
                          decl: TThingInfo,
@@ -41,7 +43,7 @@ proc generateJavaMethod*(target: string,
   let returnMethod = javaReturnMethod(retSig)
   let returnsVoid = returnMethod == "Void"
   if decl.isStatic:
-    addln "proc $1*(jself: $2, $3): $4 =" % [
+    addln "proc $1*(jself: $2_statictype, $3): $4 =" % [
       mangleProcName(decl.name), mangled, argDef, retDef]
     addln "  if cls_$1.class == nil:" % [mangled]
     addln "    cls_$1 = FindClass(defaultJVM, \"$2\")" % [mangled, target]
