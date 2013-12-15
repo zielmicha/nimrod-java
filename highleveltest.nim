@@ -19,3 +19,6 @@ echo "sleep end"
 let r = java_lang_Thread_static.getAllStackTraces()
 
 let mystr = valueOf(java_lang_String_Static, false)
+echo mystr.hashCode
+let containResult = mystr.startsWith(mystr)
+echo containResult

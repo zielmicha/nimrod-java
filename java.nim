@@ -58,7 +58,7 @@ proc packJObject*(jvm: TJVM, obj: jobject): JInstance =
 proc seqToJArray*[T](jvm: TJVM, s: seq[T]): jobject =
   assert False
 
-proc jarrayToSeq*(jvm: TJVM, s: jobject): auto =
+proc jarrayToSeq*[T](jvm: TJVM, s: jobject): seq[T] =
   assert False
 
 proc `$`(class: TJClass): string =

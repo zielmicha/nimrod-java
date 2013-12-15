@@ -43,23 +43,28 @@ proc generateJavaMethod*(target: string,
   let javaCastArgs = javaCastArgs(argSig)
   let returnMethod = javaReturnMethod(retSig)
   let returnsVoid = returnMethod == "Void"
-  if decl.isStatic:
-    addln "proc $1*(jself: $2_statictype, $3): $4 =" % [
-      mangleProcName(decl.name), mangled, argDef, retDef]
-    addln "  if cls_$1.class == nil:" % [mangled]
-    addln "    cls_$1 = FindClass(defaultJVM, \"$2\")" % [mangled, target]
-    addln "  let class = cls_$1" % [mangled]
-    addln "  let env = class.env"
-    addln "  discard env.PushLocalFrame(env, 16)"
-    # TODO: call GetMethodID only once for each method
-    addln "  let methodid = env.GetStaticMethodID(env, class.class, \"$1\", \"$2\")" % [
-      decl.name, sig]
-    addln "  $1env.CallStatic$2Method(env, class.class, methodid, $3)" % [
-      if returnsVoid: "" else: "let ret = ",
-      returnMethod, javaCastArgs]
-    if not returnsVoid:
-      addln "  result = $1" % [javaCastResult(retSig, "ret")]
-    addln "  discard env.PopLocalFrame(env, nil)"
+  let isStatic = decl.isStatic
+  let dispatchType = if isStatic: mangled & "_statictype"
+                     else: mangled
+  addln "proc $1*(jself: $2, $3): $4 =" % [
+    mangleProcName(decl.name), dispatchType, argDef, retDef]
+
+  addln "  if cls_$1.class == nil:" % [mangled]
+  addln "    cls_$1 = FindClass(defaultJVM, \"$2\")" % [mangled, target]
+  addln "  let class = cls_$1" % [mangled]
+  addln "  let env = class.env"
+  addln "  discard env.PushLocalFrame(env, 16)"
+  # TODO: call GetMethodID only once for each method
+  let staticWord = if isStatic: "Static" else: ""
+  addln "  let methodid = env.Get$3MethodID(env, class.class, \"$1\", \"$2\")" % [
+    decl.name, sig, staticWord]
+  addln "  $1env.Call$4$2Method(env, $5, methodid, $3)" % [
+    if returnsVoid: "" else: "let ret = ",
+    returnMethod, javaCastArgs, staticWord,
+    if isStatic: "class.class" else: "JInstance(jself).obj"]
+  if not returnsVoid:
+    addln "  result = $1" % [javaCastResult(retSig, "ret")]
+  addln "  discard env.PopLocalFrame(env, nil)"
 
 proc generateClassThings*(info: TClassInfo,
                           usedTypes: var seq[PJNIType]): string =
@@ -108,7 +113,7 @@ proc javaCastResult(def: PJNIType, name: string): string =
     of jniobject:
       result = "$2(packJObject(defaultJVM, $1))" % [name, def.className.classnameToId]
     of jniarray:
-      result = "jarrayToSeq(defaultJVM, $1)" % [name]
+      result = "jarrayToSeq[$2](defaultJVM, $1)" % [name, javaToNimType(def.elementType)]
 
 proc javaToNimArgs(t: seq[PJNIType]): string =
   var result: seq[string] = @[]
