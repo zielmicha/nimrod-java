@@ -24,7 +24,8 @@ proc generateJavaClass*(target: string): string =
   # However, this means that threads may leak memory.
   addln "var cls_$1* {.threadvar.}: TJClass" % [mangled, target]
   # just a marker for compile-time dispatch
-  addln "type $1_statictype* = distinct int" % [mangled]
+  addln "type $1_statictype* = object" % [mangled]
+  addln "  fakefield: int"
   addln "var $1_static*: $1_statictype" % [mangled]
 
 proc generateJavaMethod*(target: string,

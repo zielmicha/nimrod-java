@@ -66,7 +66,7 @@ proc generate*(builder: PBuilder, target: string) =
     writeFile(target / ("wrapper_" & classnameToId(classname) & ".nim"), class_header & data)
 
 proc compileFlags*(): string =
-  return "--cincludes:$1 --verbosity:0 --parallelBuild:1 --warning[SmallLshouldNotBeUsed]=off --threads:on" % [findJavaInclude()]
+  return "--cincludes:$1 --verbosity:0 --parallelBuild:1 --threads:on" % [findJavaInclude()]
 
 when isMainModule:
   var builder: PBuilder = makeBuilder()

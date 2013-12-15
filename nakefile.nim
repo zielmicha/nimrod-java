@@ -7,4 +7,8 @@ task "test", "Build java.lang bindings as a test.":
     prefixes=["java/lang"])
   builder.generate("nimcache" / "jnitarget")
 
-  shell("nimrod c", compileFlags(), " --path:nimcache/jnitarget -r highleveltest")
+  let cmd = "nimrod c " & compileFlags() & " --path:nimcache/jnitarget -r highleveltest"
+  cmd.echo
+  shell(cmd)
+
+#https://gist.github.com/zielmicha/0a5739a1b77af0f7d5d5

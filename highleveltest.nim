@@ -13,12 +13,9 @@ echo "Current year is: ", year.int
 
 java_lang_Thread_static.dumpStack()
 echo "sleep start"
-java_lang_Thread_static.sleep(1000)
+java_lang_Thread_static.sleep(300)
 echo "sleep end"
 
 let r = java_lang_Thread_static.getAllStackTraces()
 
-#java_lang_Thread_static.setDefaultUncaughtExceptionHandler()
-
-#discard valueOf(java_lang_System_Static, java_lang_Object(nil))
-#discard forName(java_lang_Class_Static, java_lang_String(nil))
+let mystr = valueOf(java_lang_String_Static, false)

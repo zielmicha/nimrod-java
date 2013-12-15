@@ -2,6 +2,9 @@ import jni
 import jni_md
 import macros
 
+export jni_md.jbyte, jni_md.jshort, jni_md.jint, jni_md.jlong
+export jni_md.jboolean
+
 type
   TJVM* = Tuple[jvm: ptr JavaVM, env: ptr JNIEnv]
   TJClass* = Tuple[env: ptr JNIEnv, class: jclass, name: string]
