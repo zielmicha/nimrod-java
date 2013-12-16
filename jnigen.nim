@@ -2,6 +2,7 @@ import javap
 import jnigencode
 import jnisig
 import jnifindjava
+import jnicommon
 import sets
 import strutils
 import tables
@@ -14,9 +15,11 @@ type
     fullClasses: TSet[string]
     classStubs: TSet[string]
     classGeneratedCode*: TTable[string, string]
+    target: string
 
-proc makeBuilder*: PBuilder =
+proc makeBuilder*(target: string): PBuilder =
   new(result)
+  result.target = target
   result.classes = @[]
   result.fullClasses = initSet[string]()
   result.classStubs = initSet[string]()
@@ -60,13 +63,21 @@ const
   typedefs_header = "import jni_md, jni, java\n"
   class_header = "import jni_md, jni, java, jtypedefs\n"
 
-proc generate*(builder: PBuilder, target: string) =
+proc generate*(builder: PBuilder) =
+  let target = builder.target
   writeFile(target / "jtypedefs.nim", typedefs_header & builder.genClassDecl())
   for classname, data in builder.classGeneratedCode.pairs():
     writeFile(target / ("wrapper_" & classnameToId(classname) & ".nim"), class_header & data)
+  writeFile(target / "build_marker", "ok")
+
+proc notBuilt*(builder: PBuilder): bool =
+  not existsFile(builder.target / "build_marker")
 
 proc compileFlags*(): string =
-  return "--cincludes:$1 --verbosity:0 --parallelBuild:1 --threads:on" % [findJavaInclude()]
+  return "--cincludes:$1 --verbosity:0 --parallelBuild:1 --threads:on --warning[SmallLshouldNotBeUsed]=off" % [findJavaInclude()]
+
+proc compileFlags*(builder: PBuilder): string =
+  compileFlags() & " --path=" & builder.target
 
 when isMainModule:
   var builder: PBuilder = makeBuilder()

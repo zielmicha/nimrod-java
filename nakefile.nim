@@ -1,14 +1,26 @@
 import nake
 import jnigen
+import times
+
+proc measureTime(description: string, e: auto) =
+  let start = epochTime()
+  e()
+  let elapsed = epochTime() - start
+  echo description, " took ", int(elapsed * 1000), "ms"
 
 task "test", "Build java.lang bindings as a test.":
-  var builder: PBuilder = jnigen.makeBuilder()
-  builder.addJAR("/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rt.jar",
-    prefixes=["java/lang"])
-  builder.generate("nimcache" / "jnitarget")
+  var builder: PBuilder = jnigen.makeBuilder("build/jnigen")
+  # Use notBuilt, so JAR won't be scanned on each build
+  # To force rebuild remove build/jnigen/build_marker
+  if builder.notBuilt():
+    measureTime "addJAR+generate":
+      builder.addJAR("/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rt.jar",
+        prefixes=["java/lang"])
+      builder.generate()
 
-  let cmd = "nimrod c " & compileFlags() & " --path:nimcache/jnitarget -r highleveltest"
-  cmd.echo
-  shell(cmd)
+  let cmd = "nimrod c " & builder.compileFlags() & " highleveltest"
+  measureTime "nimrod c":
+    shell(cmd)
 
-#https://gist.github.com/zielmicha/0a5739a1b77af0f7d5d5
+  measureTime "run":
+    shell("./highleveltest")

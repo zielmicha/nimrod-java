@@ -1,10 +1,8 @@
-import wrapper_java_lang_System
-import wrapper_java_lang_String
-import wrapper_java_lang_Thread
-import wrapper_java_lang_Class
-import jtypedefs
-import java
 import javatools
+importJava "java.lang.System"
+importJava "java.lang.String"
+importJava "java.lang.Thread"
+importJava "java.lang.Class"
 
 defaultJVM = newJVM()
 
