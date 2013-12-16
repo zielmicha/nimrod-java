@@ -61,6 +61,12 @@ proc seqToJArray*[T](jvm: TJVM, s: seq[T]): jobject =
 proc jarrayToSeq*[T](jvm: TJVM, s: jobject): seq[T] =
   assert False
 
+proc copyStringUTF8*(jvm: TJVM, s: jobject): string =
+  let env = jvm.env
+  let data: cstring = env.GetStringUTFChars(env, s, nil)
+  result = $data
+  env.ReleaseStringUTFChars(env, s, data)
+
 proc `$`(class: TJClass): string =
   "JavaClass " & class.name
 

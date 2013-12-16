@@ -4,6 +4,7 @@ import wrapper_java_lang_Thread
 import wrapper_java_lang_Class
 import jtypedefs
 import java
+import javatools
 
 defaultJVM = newJVM()
 
@@ -22,3 +23,5 @@ let mystr = valueOf(java_lang_String_Static, false)
 echo mystr.hashCode
 let containResult = mystr.startsWith(mystr)
 echo containResult
+
+echo mystr
