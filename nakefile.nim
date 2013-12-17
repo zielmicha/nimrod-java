@@ -24,3 +24,6 @@ task "test", "Build java.lang bindings as a test.":
 
   measureTime "run":
     shell("./highleveltest")
+
+task "test-javap", "Run javap.nim.":
+  shell("nimrod c " & compileFlags() & " -d:useLibzipSrc -r javap")

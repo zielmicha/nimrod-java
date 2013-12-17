@@ -24,6 +24,9 @@ type
     name*: string
     isPublic*: bool
     things*: seq[TThingInfo]
+    isClass*: bool
+    implements*: seq[string]
+    extends*: string
 
 proc maybeStripStart(a: var string, start: string): bool =
   if a.startsWith(start):
@@ -40,9 +43,36 @@ proc stripFirstWord(a: var string): bool =
     a = a[loc+1..a.len-1]
     return true
 
+proc stripRe(a: var string, r: TRegEx): string =
+  let loc = a.matchLen(r)
+  assert loc != -1, "failed to match " & a.repr
+  result = a[0..loc-1]
+  a = a[loc..a.high]
+
 proc parseClassInfo(line: string): TClassInfo =
   var rest = line
   result.isPublic = rest.maybeStripStart("public ")
+  discard rest.maybeStripStart("protected ")
+  discard rest.maybeStripStart("private ")
+  discard rest.maybeStripStart("final ")
+  discard rest.maybeStripStart("abstract ")
+  if rest.maybeStripStart("class "):
+    result.isClass = true
+  elif rest.maybeStripStart("interface "):
+    result.isClass = false
+  else:
+    assert false, "malformed javap class line: " & line.repr
+
+  let name = rest.stripRe(re"^(\w|\.|\$|-)+")
+  discard name
+  if result.isClass:
+    if rest.maybeStripStart(" extends "):
+      result.extends = rest.stripRe(re"^(\w|\$|\.)+")
+  if rest.maybeStripStart(if result.isClass: " implements " else: " extends "):
+    let interfaceMatch = rest.stripRe(re"^(\w|\$|\.|,)+")
+    result.implements = interfaceMatch.split(',')
+
+  assert rest == "{", "Remaining class line: $1, $2" % [rest.repr, line.repr]
 
 proc `$`(info: TThingInfo): string =
   "JavaThing[type=$1, name=$2, static=$3]" % [$info.kind, info.name, $info.isStatic]
@@ -150,10 +180,12 @@ when isMainModule:
   var s: seq[string] = @[]
 
   var classN, thingN = 0
-  for classname in listJAR("/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rt.jar",
+  let jarpath = "/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rt.jar"
+  let jarmd5 = getFileMd5(jarpath)
+  for classname in listJAR(jarpath,
                            prefixes=["java/", "javax/"]):
     echo classname
     classN += 1
-    let info = invokeJavap(classname)
+    let info = invokeJavap(classname, jarpath=jarpath, jarmd5=jarmd5)
     thingN += info.things.len
   echo "Processed $1 classes, $2 methods" % [$classN, $thingN]
