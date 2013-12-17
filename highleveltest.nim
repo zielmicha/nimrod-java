@@ -3,6 +3,7 @@ importJava "java.lang.System"
 importJava "java.lang.String"
 importJava "java.lang.Thread"
 importJava "java.lang.Class"
+importJava "java.lang.Object"
 
 defaultJVM = newJVM()
 
@@ -23,3 +24,7 @@ let containResult = mystr.startsWith(mystr)
 echo containResult
 
 echo mystr
+
+# test converters
+mystr.notifyAll()
+echo "notifiedAll!"

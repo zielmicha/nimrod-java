@@ -71,6 +71,8 @@ proc parseClassInfo(line: string): TClassInfo =
   if rest.maybeStripStart(if result.isClass: " implements " else: " extends "):
     let interfaceMatch = rest.stripRe(re"^(\w|\$|\.|,)+")
     result.implements = interfaceMatch.split(',')
+  else:
+    result.implements = @[]
 
   assert rest == "{", "Remaining class line: $1, $2" % [rest.repr, line.repr]
 

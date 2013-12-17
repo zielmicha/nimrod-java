@@ -26,6 +26,9 @@ proc generateJavaClass*(target: string): string =
   addln "  fakefield: int"
   addln "var $1_static*: $1_statictype" % [mangled]
 
+proc generateClassConverter*(src: string, dst: string): string =
+  "converter jconvert_from_$1_to_$2*(x: $1): $2 = $2(JInstance(x))\n" % [classnameToId(src), classnameToId(dst)]
+
 proc generateJavaMethod*(target: string,
                          decl: TThingInfo,
                          usedTypes: var seq[PJNIType]): string =

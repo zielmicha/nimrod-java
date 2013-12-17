@@ -57,6 +57,9 @@ proc parseOne*(sig: string): PJNIType =
   result = parsePart(sigMut)
   assert sigMut.len == 0
 
+proc jnisigFromClassname*(name: string): PJNIType =
+  return parseOne("L$1;" % name)
+
 proc parseMany(sig: string): seq[PJNIType] =
   result = @[]
   var sigMut = sig

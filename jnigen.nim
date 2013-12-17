@@ -15,12 +15,14 @@ type
     fullClasses: TSet[string]
     classStubs: TSet[string]
     classGeneratedCode*: TTable[string, string]
+    convertables: seq[Tuple[src: string, dst: string]]
     target: string
 
 proc makeBuilder*(target: string): PBuilder =
   new(result)
   result.target = target
   result.classes = @[]
+  result.convertables = @[]
   result.fullClasses = initSet[string]()
   result.classStubs = initSet[string]()
   result.classGeneratedCode = initTable[string, string]()
@@ -28,7 +30,18 @@ proc makeBuilder*(target: string): PBuilder =
 proc normalizeStyle(s: string): string =
   s.toLower.replace("_", "")
 
+proc normalizeJavaName(s: string): string =
+  s.replace(".", "/")
+
+proc normJniSig(name: string): PJNIType =
+  ## Return JNI signature of class named `name` (name using either . or /)
+  name.normalizeJavaName.jnisigFromClassname
+
 proc addJAR*(builder: PBuilder, path: string, prefixes: openarray[string]) =
+  ## Load classes with names starting with any of `prefixes` to a builder.
+  ## Type definitions for these classes and classes mentioned by them
+  ## will be added to jtypedefs.nim. However only for matched classes,
+  ## method wrappers will be generated in wrapper_`classname`.nim files.
   let jarmd5 = getFileMD5(path)
   var usedTypes: seq[PJNIType] = @[]
   for classname in listJAR(path, prefixes=prefixes):
@@ -44,10 +57,16 @@ proc addJAR*(builder: PBuilder, path: string, prefixes: openarray[string]) =
     if mangled notin builder.fullClasses:
       builder.fullClasses.incl(mangled)
       builder.classes.add(info)
-      usedTypes.add(jnisig.parseOne("L$1;" % classname))
+      usedTypes.add(jnisigFromClassname(classname))
       if info.isPublic:
         let code = generateClassThings(info, usedTypes)
         builder.classGeneratedCode[classname] = code
+      if info.extends != nil:
+        builder.convertables.add((classname, info.extends))
+        usedTypes.add(normJniSig(info.extends))
+      for implement in info.implements:
+        builder.convertables.add((classname, implement))
+        usedTypes.add(normJniSig(implement))
 
   # also add missing types
   for t in usedTypes:
@@ -59,13 +78,21 @@ proc genClassDecl(builder: PBuilder): string =
   for name in builder.classStubs:
     add result, generateJavaClass(name)
 
+proc genConverters(builder: PBuilder): string =
+  result = "# converters!\n"
+  for conv in builder.convertables:
+    result.add generateClassConverter(conv.src, conv.dst)
+
 const
-  typedefs_header = "import jni_md, jni, java\n"
-  class_header = "import jni_md, jni, java, jtypedefs\n"
+  pragmas = "{.warnings:off.}\n"
+  typedefs_header = "import jni_md, jni, java\n" & pragmas
+  class_header = "import jni_md, jni, java, jtypedefs\n" & pragmas
 
 proc generate*(builder: PBuilder) =
   let target = builder.target
-  writeFile(target / "jtypedefs.nim", typedefs_header & builder.genClassDecl())
+  writeFile(target / "jtypedefs.nim", typedefs_header &
+                                      builder.genClassDecl() &
+                                      builder.genConverters())
   for classname, data in builder.classGeneratedCode.pairs():
     writeFile(target / ("wrapper_" & classnameToId(classname) & ".nim"), class_header & data)
   writeFile(target / "build_marker", "ok")
