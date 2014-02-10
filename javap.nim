@@ -127,7 +127,9 @@ proc startsWith(path: string, prefixes: openarray[string]): bool =
   return false
 
 proc cachedRawJavap(name: string, jarpath: string, jarmd5: string): TFile =
-  let path = "nimcache" / "javap" / getMD5(jarmd5 / name)
+  let dirPath = "nimcache" / "javap"
+  createDir(dirPath)
+  let path = dirPath / getMD5(jarmd5 / name)
   var inFile: TFile
   if not inFile.open(path):
     echo "javap $1" % name

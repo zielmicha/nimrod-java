@@ -38,6 +38,7 @@ proc destruct(instance: JInstance) =
   echo "Destroying Java!"
 
 proc findClass*(jvm: TJVM, name: string): TJClass =
+  assert jvm.env != nil, "JVM not initialized (check defaultJVM for this thread)"
   let class = jvm.env.FindClass(jvm.env, name)
   assert class != nil
   return (jvm.env, class, name)
