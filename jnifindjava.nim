@@ -1,8 +1,11 @@
 
 proc findJava*: string =
-  "/usr/lib/jvm/java-6-openjdk-amd64/jre/lib/amd64/server/libjvm.so"
+  "/usr/lib/jvm/java-6-openjdk-amd64"
 
-const libjava* = findJava()
+proc findJavaLib*: string =
+  findJava() & "/jre/lib/amd64/server/libjvm.so"
 
 proc findJavaInclude*: string =
-  "/usr/lib/jvm/java-6-openjdk-amd64/include/"
+  findJava() & "/include/"
+
+const libjava* = findJavaLib()

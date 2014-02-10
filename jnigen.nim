@@ -90,6 +90,7 @@ const
 
 proc generate*(builder: PBuilder) =
   let target = builder.target
+  createDir(target)
   writeFile(target / "jtypedefs.nim", typedefs_header &
                                       builder.genClassDecl() &
                                       builder.genConverters())
