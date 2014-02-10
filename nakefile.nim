@@ -1,5 +1,6 @@
 import nake
 import jnigen
+import jnifindjava
 import times
 
 proc measureTime(description: string, e: auto) =
@@ -14,7 +15,7 @@ task "test", "Build java.lang bindings as a test.":
   # To force rebuild remove build/jnigen/build_marker
   if builder.notBuilt():
     measureTime "addJAR+generate":
-      builder.addJAR("/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rt.jar",
+      builder.addJAR(findJava() & "/jre/lib/rt.jar",
         prefixes=["java/lang"])
       builder.generate()
 

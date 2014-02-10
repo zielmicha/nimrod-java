@@ -109,7 +109,6 @@ proc compileFlags*(builder: PBuilder): string =
   result = compileFlags()
   result &= " --path=" & builder.target.quoteShell()
   result &= " --path=" & currentSourcePath().parentDir.quoteShell()
-  result.echo
 
 when isMainModule:
   var builder: PBuilder = makeBuilder()
