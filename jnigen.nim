@@ -7,6 +7,7 @@ import sets
 import strutils
 import tables
 import os
+import osproc
 
 type
   PBuilder* = ref TBuilder
@@ -105,7 +106,10 @@ proc compileFlags*(): string =
   return "--cincludes:$1 --verbosity:0 --parallelBuild:1 --threads:on --warning[SmallLshouldNotBeUsed]=off" % [findJavaInclude()]
 
 proc compileFlags*(builder: PBuilder): string =
-  compileFlags() & " --path=" & builder.target
+  result = compileFlags()
+  result &= " --path=" & builder.target.quoteShell()
+  result &= " --path=" & currentSourcePath().parentDir.quoteShell()
+  result.echo
 
 when isMainModule:
   var builder: PBuilder = makeBuilder()

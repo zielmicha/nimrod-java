@@ -18,12 +18,12 @@ task "test", "Build java.lang bindings as a test.":
         prefixes=["java/lang"])
       builder.generate()
 
-  let cmd = "nimrod c " & builder.compileFlags() & " highleveltest"
+  let cmd = "nimrod c " & builder.compileFlags() & " examples/highleveltest"
   measureTime "nimrod c":
     shell(cmd)
 
   measureTime "run":
-    shell("./highleveltest")
+    shell("examples/highleveltest")
 
 task "test-javap", "Run javap.nim.":
   shell("nimrod c " & compileFlags() & " -d:useLibzipSrc -r javap")
