@@ -35,7 +35,12 @@ proc generateJavaMethod*(target: string,
   result = ""
   let sig = decl.sig
   let mangled = target.classnameToId
-  let (argSig, retSig) = parseCall(sig)
+  let isConstructor = decl.kind == javaConstructor
+  let targetProcName = if isConstructor: "newInstance"
+    else: mangleProcName(decl.name)
+  let (argSig, rawRetSig) = parseCall(sig)
+  let retSig = if isConstructor: jnisigFromClassname(target)
+    else: rawRetSig
   usedTypes.add(retSig)
   for arg in argSig:
     usedTypes.add(arg)
@@ -44,11 +49,11 @@ proc generateJavaMethod*(target: string,
   let javaCastArgs = javaCastArgs(argSig)
   let returnMethod = javaReturnMethod(retSig)
   let returnsVoid = returnMethod == "Void"
-  let isStatic = decl.isStatic
+  let isStatic = decl.isStatic or isConstructor
   let dispatchType = if isStatic: mangled & "_statictype"
                      else: mangled
   addln "proc $1*(jself: $2, $3): $4 =" % [
-    mangleProcName(decl.name), dispatchType, argDef, retDef]
+    targetProcName, dispatchType, argDef, retDef]
 
   addln "  if cls_$1.class == nil:" % [mangled]
   addln "    cls_$1 = FindClass(defaultJVM, \"$2\")" % [mangled, target]
@@ -56,13 +61,16 @@ proc generateJavaMethod*(target: string,
   addln "  let env = class.env"
   addln "  discard env.PushLocalFrame(env, 16)"
   # TODO: call GetMethodID only once for each method
-  let staticWord = if isStatic: "Static" else: ""
+  let staticWord = if isStatic and not isConstructor: "Static" else: ""
   addln "  let methodid = env.Get$3MethodID(env, class.class, \"$1\", \"$2\")" % [
     decl.name, sig, staticWord]
-  addln "  $1env.Call$4$2Method(env, $5, methodid, $3)" % [
+  let jniFunc = if isConstructor: "NewObject"
+    else: "Call$1$2Method" % [staticWord, returnMethod]
+  addln "  $1env.$2(env, $3, methodid, $4)" % [
     if returnsVoid: "" else: "let ret = ",
-    returnMethod, javaCastArgs, staticWord,
-    if isStatic: "class.class" else: "JInstance(jself).obj"]
+    jniFunc,
+    if isStatic: "class.class" else: "JInstance(jself).obj",
+    javaCastArgs]
   if not returnsVoid:
     addln "  result = $1" % [javaCastResult(retSig, "ret")]
   addln "  discard env.PopLocalFrame(env, nil)"
@@ -73,7 +81,7 @@ proc generateClassThings*(info: TClassInfo,
   for thing in info.things:
     if not thing.isPublic:
       continue
-    if thing.kind == javaMethod:
+    if thing.kind in {javaMethod, javaConstructor}:
       addln generateJavaMethod(info.name, thing, usedTypes)
 
 proc javaReturnMethod(t: PJNIType): string =

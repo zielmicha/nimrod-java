@@ -98,7 +98,7 @@ proc parseJavaDecl(line: string): TThingInfo =
       result.kind = javaConstructor
     else:
       result.kind = javaSpecial
-    result.name = "<constructor>"
+    result.name = "<init>"
   else:
     let nameMatch = rest.matchLen(re"^(\w|\$)+")
     assert nameMatch != -1, "Failed to parse $1, rest: $2" % [line, rest]

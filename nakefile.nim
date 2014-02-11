@@ -15,7 +15,7 @@ proc runExample(name: string) =
   # To force rebuild remove build/jnigen/build_marker
   if builder.notBuilt():
     builder.addJAR(findJava() & "/jre/lib/rt.jar",
-      prefixes=["java/lang"])
+      prefixes=["java/lang", "java/util"])
     builder.generate()
 
   let cmd = "nimrod c " & builder.compileFlags() & " examples/" & name
