@@ -35,7 +35,8 @@ proc newJVM*(classpath: string = ""): TJVM =
   return (jvm, env)
 
 proc destruct(instance: JInstance) =
-  echo "Destroying Java!"
+  let env = instance.jvm.env
+  env.DeleteGlobalRef(env, instance.obj)
 
 proc findClass*(jvm: TJVM, name: string): TJClass =
   assert jvm.env != nil, "JVM not initialized (check defaultJVM for this thread)"

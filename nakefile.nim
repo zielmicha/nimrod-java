@@ -25,9 +25,11 @@ proc runExample(name: string) =
 task "test", "Run highleveltest example.":
   runExample("highleveltest")
 
-for name in ["example2"]:
-  task name, "Run " & name & " example.":
-    runExample(name)
+for loopname in ["example2", "gctest"]:
+  block:
+    let name = loopname
+    task name, "Run " & name & " example.":
+      runExample(name)
 
 task "test-javap", "Run javap.nim.":
   shell("nimrod c " & compileFlags() & " -d:useLibzipSrc -r javap")
