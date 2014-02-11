@@ -3,6 +3,7 @@ import java
 import macros
 import jnicommon
 import strutils
+import wrapper_java_lang_Object
 
 export java.newJVM
 export java.defaultJVM
@@ -24,3 +25,9 @@ when not defined($2_static):
 proc `$`*(obj: java_lang_String): string =
   let asInstance = JInstance(obj)
   copyStringUTF8(asInstance.jvm, asInstance.obj)
+
+proc `$`*(obj: java_lang_Object): string =
+  $(obj.toString())
+
+converter stringToJavaString*(s: string): java_lang_String =
+  result = java_lang_String(createJavaString(defaultJVM, s))

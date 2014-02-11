@@ -68,6 +68,15 @@ proc copyStringUTF8*(jvm: TJVM, s: jobject): string =
   result = $data
   env.ReleaseStringUTFChars(env, s, data)
 
+proc createJavaString*(jvm: TJVM, s: cstring): JInstance =
+  let env = jvm.env
+  discard env.PushLocalFrame(env, 16)
+
+  let obj = env.NewStringUTF(env, s)
+  result = jvm.packJObject(jobject(obj))
+
+  discard env.PopLocalFrame(env, nil)
+
 proc `$`(class: TJClass): string =
   "JavaClass " & class.name
 
